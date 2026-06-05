@@ -1,0 +1,41 @@
+generator client {
+  provider = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  admin
+  karyawan
+  mandor
+}
+
+enum Status {
+  pending
+  approved
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  nid          String        @unique
+  password     String
+  role         Role          @default(karyawan)
+  createdAt    DateTime      @default(now())
+  deletedAt    DateTime?
+  transactions Transaction[]
+}
+
+model Transaction {
+  id        Int      @id @default(autoincrement())
+  foto      String
+  tempat    String
+  waktu     DateTime
+  status    Status   @default(pending)
+  createdAt DateTime @default(now())
+  deletedAt DateTime?
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+}
