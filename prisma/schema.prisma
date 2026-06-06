@@ -23,9 +23,11 @@ model User {
   nid          String        @unique
   password     String
   role         Role          @default(karyawan)
-  createdAt    DateTime      @default(now())
-  deletedAt    DateTime?
-  transactions Transaction[]
+  createdAt      DateTime      @default(now())
+  deletedAt      DateTime?
+  failedAttempts Int           @default(0)
+  lockedUntil    DateTime?
+  transactions   Transaction[]
 }
 
 model Transaction {
@@ -38,4 +40,15 @@ model Transaction {
   deletedAt DateTime?
   userId    Int
   user      User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  apdId     Int
+  apd       Apd      @relation(fields: [apdId], references: [id], onDelete: Restrict)
+}
+
+model Apd {
+  id           Int           @id @default(autoincrement())
+  name         String
+  description  String?
+  createdAt    DateTime      @default(now())
+  deletedAt    DateTime?
+  transactions Transaction[]
 }

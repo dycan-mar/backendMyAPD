@@ -43,8 +43,15 @@ const createUser = async (req, res) => {
   try {
     const { nid, password, role } = req.body;
 
-    if (!nid || !password) {
-      return sendError(res, "NID and password are required", 400);
+    if (!nid || typeof nid !== "string" || nid.trim() === "") {
+      return sendError(res, "NID is required and must be a string", 400);
+    }
+    if (!password || typeof password !== "string" || password.trim() === "") {
+      return sendError(res, "Password is required and must be a string", 400);
+    }
+    const validRoles = ["admin", "karyawan", "mandor"];
+    if (role && !validRoles.includes(role)) {
+      return sendError(res, "Invalid role", 400);
     }
 
     const existingUser = await prisma.user.findUnique({ where: { nid } });
@@ -80,6 +87,10 @@ const updateUser = async (req, res) => {
     const { id } = req.params;
     const { nid, password, role } = req.body;
 
+    if (!id || isNaN(Number(id))) {
+      return sendError(res, "Invalid user ID", 400);
+    }
+
     const existingUser = await prisma.user.findFirst({
       where: { id: Number(id), deletedAt: null },
     });
@@ -89,10 +100,26 @@ const updateUser = async (req, res) => {
     }
 
     const updateData = {};
-    if (nid) updateData.nid = nid;
-    if (role) updateData.role = role;
-    if (password) {
-      updateData.password = await bcrypt.hash(password, 10);
+    if (nid !== undefined) {
+      if (typeof nid !== "string" || nid.trim() === "") {
+        return sendError(res, "NID cannot be empty", 400);
+      }
+      updateData.nid = nid.trim();
+    }
+    
+    const validRoles = ["admin", "karyawan", "mandor"];
+    if (role !== undefined) {
+      if (!validRoles.includes(role)) {
+        return sendError(res, "Invalid role", 400);
+      }
+      updateData.role = role;
+    }
+
+    if (password !== undefined) {
+      if (typeof password !== "string" || password.trim() === "") {
+         return sendError(res, "Password cannot be empty", 400);
+      }
+      updateData.password = await bcrypt.hash(password.trim(), 10);
     }
 
     const user = await prisma.user.update({
@@ -116,6 +143,10 @@ const updateUser = async (req, res) => {
 const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
+
+    if (!id || isNaN(Number(id))) {
+      return sendError(res, "Invalid user ID", 400);
+    }
 
     const existingUser = await prisma.user.findFirst({
       where: { id: Number(id), deletedAt: null },
