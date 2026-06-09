@@ -3,8 +3,12 @@ const path = require("path");
 const fs = require("fs");
 
 const uploadDir = path.join(__dirname, "../../public/uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+try {
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+} catch (error) {
+  console.warn("Warning: Could not create upload directory. This is expected in serverless environments like Vercel (Read-Only Filesystem). Local uploads will fail here.");
 }
 
 const storage = multer.diskStorage({

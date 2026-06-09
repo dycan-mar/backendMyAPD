@@ -13,10 +13,11 @@ const upload = require("./middleware/uploadMiddleware");
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // <-- TAMBAHKAN BARIS INI
 app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
 
 // Routes (nanti kita tambah sini)
-app.post("/api/login", authController.login);
+app.post("/api/login", upload.none(), authController.login);
 
 // Routes users
 app.get("/api/users", verifyToken, userController.getAllUsers);
@@ -49,3 +50,4 @@ if (require.main === module) {
 }
 
 module.exports = app;
+// Trigger restart
