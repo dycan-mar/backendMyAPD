@@ -3,7 +3,10 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { sendSuccess, sendError } = require("../utils/response");
 
-const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error("FATAL ERROR: JWT_SECRET is not defined.");
+}
 
 const login = async (req, res) => {
   try {
@@ -21,7 +24,7 @@ const login = async (req, res) => {
 
     // Check if account is locked
     if (user.lockedUntil && user.lockedUntil > new Date()) {
-      return sendError(res, "Account is temporarily locked due to multiple failed login attempts. Please try again after 1 minute.", 403);
+      return sendError(res, "Account is temporarily locked due to multiple failed login attempts. Please try again after 15 minutes.", 403);
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -32,9 +35,9 @@ const login = async (req, res) => {
       let updateData = { failedAttempts: newFailedAttempts };
 
       if (newFailedAttempts >= 5) {
-        // Lock for 1 minute
+        // Lock for 15 minutes
         const lockTime = new Date();
-        lockTime.setMinutes(lockTime.getMinutes() + 1);
+        lockTime.setMinutes(lockTime.getMinutes() + 15);
         updateData.lockedUntil = lockTime;
       }
 

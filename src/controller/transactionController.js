@@ -65,6 +65,75 @@ const createTransaction = async (req, res) => {
   }
 };
 
+const getAllTransactions = async (req, res) => {
+  try {
+    const { status, apdId, userId, limit } = req.query;
+    const where = { deletedAt: null };
+
+    // Role-based filtering: Karyawan can only see their own transactions
+    if (req.user.role === "karyawan") {
+      where.userId = req.user.id;
+    } else if (userId) {
+      where.userId = Number(userId);
+    }
+
+    // Optional filters
+    if (status) where.status = status;
+    if (apdId) where.apdId = Number(apdId);
+
+    const transactions = await prisma.transaction.findMany({
+      where,
+      orderBy: { waktu: 'desc' },
+      take: limit ? Number(limit) : undefined,
+      include: {
+        apd: true,
+        user: { select: { id: true, nid: true, role: true } },
+      }
+    });
+
+    return sendSuccess(res, transactions, 200);
+  } catch (error) {
+    console.error("Error fetching transactions:", error);
+    return sendError(res, "Failed to fetch transactions");
+  }
+};
+
+const updateTransactionStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!["pending", "approved"].includes(status)) {
+      return sendError(res, "Invalid status. Must be 'pending' or 'approved'", 400);
+    }
+
+    const existingTransaction = await prisma.transaction.findFirst({
+      where: { id: Number(id), deletedAt: null },
+    });
+
+    if (!existingTransaction) {
+      return sendError(res, "Transaction not found", 404);
+    }
+
+    // Only admin can approve (enforced by route middleware checkRole)
+    const updatedTransaction = await prisma.transaction.update({
+      where: { id: Number(id) },
+      data: { status },
+      include: {
+        apd: true,
+        user: { select: { id: true, nid: true, role: true } },
+      }
+    });
+
+    return sendSuccess(res, updatedTransaction, 200);
+  } catch (error) {
+    console.error("Error updating transaction:", error);
+    return sendError(res, "Failed to update transaction status");
+  }
+};
+
 module.exports = {
   createTransaction,
+  getAllTransactions,
+  updateTransactionStatus,
 };

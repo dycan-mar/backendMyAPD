@@ -1,7 +1,10 @@
 const jwt = require("jsonwebtoken");
 const { sendError } = require("../utils/response");
 
-const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error("FATAL ERROR: JWT_SECRET is not defined.");
+}
 
 const verifyToken = (req, res, next) => {
   const token = req.headers["authorization"];

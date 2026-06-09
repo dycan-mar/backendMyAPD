@@ -4,16 +4,37 @@ const { sendSuccess, sendError } = require("../utils/response");
 
 const getAllUsers = async (req, res) => {
   try {
-    const users = await prisma.user.findMany({
-      where: { deletedAt: null },
-      select: {
-        id: true,
-        nid: true,
-        role: true,
-        createdAt: true,
-      },
+    const { page = 1, limit = 10 } = req.query;
+    const pageNumber = Number(page);
+    const limitNumber = Number(limit);
+    const skip = (pageNumber - 1) * limitNumber;
+
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where: { deletedAt: null },
+        skip: skip,
+        take: limitNumber,
+        select: {
+          id: true,
+          nid: true,
+          role: true,
+          createdAt: true,
+        },
+      }),
+      prisma.user.count({ where: { deletedAt: null } })
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      message: "Success",
+      data: users,
+      meta: {
+        total,
+        page: pageNumber,
+        limit: limitNumber,
+        totalPages: Math.ceil(total / limitNumber)
+      }
     });
-    return sendSuccess(res, users);
   } catch (error) {
     console.error("Error fetching users:", error);
     return sendError(res, "Failed to fetch users");
