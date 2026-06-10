@@ -4,6 +4,7 @@ const cors = require("cors");
 const path = require("path");
 
 const app = express();
+
 const userController = require("./controller/userController");
 const authController = require("./controller/authController");
 const apdController = require("./controller/apdController");
@@ -20,8 +21,14 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 
+app.set("trust proxy", 1);
 app.use(limiter);
-app.use(cors());
+app.use(cors({
+  origin: "http://dev.frontend.merak.web.id", 
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], 
+  allowedHeaders: ["Content-Type", "Authorization"], 
+  credentials: true 
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // <-- TAMBAHKAN BARIS INI
 app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));

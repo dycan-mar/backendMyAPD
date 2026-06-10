@@ -16,6 +16,7 @@ const getAllUsers = async (req, res) => {
         take: limitNumber,
         select: {
           id: true,
+          username: true,
           nid: true,
           role: true,
           createdAt: true,
@@ -48,6 +49,7 @@ const getUserById = async (req, res) => {
       where: { id: Number(id), deletedAt: null },
       select: {
         id: true,
+        username: true,
         nid: true,
         role: true,
         createdAt: true,
@@ -62,10 +64,13 @@ const getUserById = async (req, res) => {
 
 const createUser = async (req, res) => {
   try {
-    const { nid, password, role } = req.body;
+    const { nid, username, password, role } = req.body;
 
     if (!nid || typeof nid !== "string" || nid.trim() === "") {
       return sendError(res, "NID is required and must be a string", 400);
+    }
+    if (!username || typeof username !== "string" || username.trim() === "") {
+      return sendError(res, "Username is required and must be a string", 400);
     }
     if (!password || typeof password !== "string" || password.trim() === "") {
       return sendError(res, "Password is required and must be a string", 400);
@@ -85,12 +90,14 @@ const createUser = async (req, res) => {
     const user = await prisma.user.create({
       data: {
         nid,
+        username,
         password: hashedPassword,
         role: role || "karyawan",
       },
       select: {
         id: true,
         nid: true,
+        username: true,
         role: true,
         createdAt: true,
       },
@@ -102,14 +109,18 @@ const createUser = async (req, res) => {
     return sendError(res, "Failed to create user");
   }
 };
-
 const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nid, password, role } = req.body;
+    const { nid, username, password, role } = req.body;
 
     if (!id || isNaN(Number(id))) {
       return sendError(res, "Invalid user ID", 400);
+    }
+
+    // Proteksi Role Admin Utama (ID 1)
+    if (Number(id) === 1 && role !== undefined && role !== "admin") {
+      return sendError(res, "Role untuk Admin Utama mutlak tidak bisa diubah!", 403);
     }
 
     const existingUser = await prisma.user.findFirst({
@@ -121,13 +132,32 @@ const updateUser = async (req, res) => {
     }
 
     const updateData = {};
+
+    // --- UPDATE VALIDASI NID DI SINI ---
     if (nid !== undefined) {
       if (typeof nid !== "string" || nid.trim() === "") {
         return sendError(res, "NID cannot be empty", 400);
       }
+
+      // Cek apakah NID berisi angka murni
+      const isNumeric = /^\d+$/.test(nid.trim());
+
+      // JIKA BUKAN ID 1 DAN NID-NYA BUKAN ANGKA, MAKA BLOKIR!
+      if (Number(id) !== 1 && !isNumeric) {
+        return sendError(res, "NID harus berupa angka murni untuk user ini.", 400);
+      }
+
       updateData.nid = nid.trim();
     }
-    
+
+    // Validasi Username, Role, & Password ke bawah tetap sama...
+    if (username !== undefined) {
+      if (typeof username !== "string" || username.trim() === "") {
+        return sendError(res, "Username cannot be empty", 400);
+      }
+      updateData.username = username.trim();
+    }
+
     const validRoles = ["admin", "karyawan", "mandor"];
     if (role !== undefined) {
       if (!validRoles.includes(role)) {
@@ -138,7 +168,7 @@ const updateUser = async (req, res) => {
 
     if (password !== undefined) {
       if (typeof password !== "string" || password.trim() === "") {
-         return sendError(res, "Password cannot be empty", 400);
+        return sendError(res, "Password cannot be empty", 400);
       }
       updateData.password = await bcrypt.hash(password.trim(), 10);
     }
@@ -149,6 +179,7 @@ const updateUser = async (req, res) => {
       select: {
         id: true,
         nid: true,
+        username: true,
         role: true,
         createdAt: true,
       },
@@ -160,13 +191,18 @@ const updateUser = async (req, res) => {
     return sendError(res, "Failed to update user");
   }
 };
-
 const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
 
     if (!id || isNaN(Number(id))) {
       return sendError(res, "Invalid user ID", 400);
+    }
+
+    // --- BENTENG BACKEND MUTLAK ---
+    // Mencegah penghapusan Admin Utama (ID 1) secara permanen di tingkat server
+    if (Number(id) === 1) {
+      return sendError(res, "Admin Utama (ID: 1) tidak boleh dihapus dari sistem!", 403);
     }
 
     const existingUser = await prisma.user.findFirst({
@@ -177,6 +213,7 @@ const deleteUser = async (req, res) => {
       return sendError(res, "User not found", 404);
     }
 
+    // Melakukan Soft Delete
     await prisma.user.update({
       where: { id: Number(id) },
       data: { deletedAt: new Date() },

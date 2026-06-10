@@ -21,6 +21,7 @@ enum Status {
 model User {
   id           Int           @id @default(autoincrement())
   nid          String        @unique
+  username     String
   password     String
   role         Role          @default(karyawan)
   createdAt      DateTime      @default(now())
@@ -47,6 +48,7 @@ model Transaction {
 model Apd {
   id           Int           @id @default(autoincrement())
   name         String
+  stock        Int
   description  String?
   createdAt    DateTime      @default(now())
   deletedAt    DateTime?
